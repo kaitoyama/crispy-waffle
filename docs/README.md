@@ -44,6 +44,7 @@
 | 09 | [09-research-notes.md](./09-research-notes.md) | 調査メモ（外部の一次情報・標準・先行事例のリンクと要約） |
 | 10 | [10-open-questions.md](./10-open-questions.md) | 未決事項・ユーザーへの確認リスト |
 | 11 | [11-trap-ecosystem.md](./11-trap-ecosystem.md) | **traP エコシステムへの接地**（想定ユーザー・traQ/Jomon 連携） |
+| 12 | [12-cross-service-usecases.md](./12-cross-service-usecases.md) | **サービス別ユースケースと横断連携**（複合ワークフロー・未拾用途） |
 
 ## 設計の三層モデル（読む前の地図）
 

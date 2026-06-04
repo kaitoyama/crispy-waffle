@@ -50,6 +50,16 @@
 | N3 | **エージェントの実装形態** | traQ BOT か、OAuth2 クライアントか、両方か | [11 §3](./11-trap-ecosystem.md) |
 | N4 | **既存レコードとの同一性** | 本システムの「タスク」と Jomon/knoQ の既存レコードのリンク・重複回避 | [11 §9](./11-trap-ecosystem.md) |
 
+## サービス横断ユースケース探索で加わった論点（[12](./12-cross-service-usecases.md) より）
+
+| # | 論点 | 背景・選択肢 | 出所 |
+|---|------|------------|------|
+| U1 | 複合ワークフローを MVP に含めるか | 合宿運営・イベント運営などの横断フローは価値が高いが複雑。単一縦串から始めるか | [12 Part B](./12-cross-service-usecases.md) |
+| U2 | `external_ref` の表現 | 本システムのタスクと Jomon/knoQ 等の既存レコードのリンク・同期・重複回避（N4 の具体化） | [12 Part D](./12-cross-service-usecases.md) |
+| U3 | anke-to 投票＝承認の条件 | 合議の定足数・期限をどう ApprovalRecord に落とすか | [12 A-3/C-5](./12-cross-service-usecases.md) |
+| U4 | 横断リマインドの実装 | 締切監視（booQ/Jomon/イベント）を独立機能か、各タスク期限から自動生成か | [12 C-1](./12-cross-service-usecases.md) |
+| U5 | 運用テンプレート提供 | オンボーディング・役職引き継ぎを標準業務テンプレートにするか | [12 C-2/C-3](./12-cross-service-usecases.md) |
+
 ## 認可平面で接地により方針が固まった点
 
 - 人間の IdP：**traQ OAuth2（auth code + PKCE）** を採用（L レベルの ID 基盤論点は実質解決）。
