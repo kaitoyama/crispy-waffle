@@ -5,8 +5,13 @@
 > agent orchestration layer adds value no single existing service provides.
 > Part A: per-service tasks/tools (knoQ, booQ, anke-to, NeoShowcase, rucQ,
 > trap-collection, traPortfolio, traPortal, Qall) with side-effect classes.
-> Part B: composite flows spanning services (training-camp ops, event→expense,
-> equipment purchase lifecycle, welcome/onboarding). Part C: not-yet-captured
+> Part B: cross-service links where the orchestration layer genuinely adds value.
+> **Correction (v2):** rucQ is NOT a thin hub to be assembled from anke-to/knoQ/Jomon —
+> it is a near-complete camp-ops system of its own (registration, deadline-bound
+> pre-questions, payment/collection, rooming, roll-calls, schedule, guidebook). So the
+> real value is connecting rucQ's *income* side to Jomon's *expense* side and adding
+> proactive chasing/approval — not rebuilding it. Other genuine composites: event→expense,
+> equipment purchase lifecycle. Part C: not-yet-captured
 > cross-cutting use cases (deadlines/reminders, onboarding, role handover, audits).
 > Part D: design implications (cross-service task links, unified catalog, traQ-scoped
 > access). This doc widens [04] and [08] beyond the accounting anchor.
@@ -28,7 +33,7 @@
 | **booQ** | 備品・書籍の貸出管理（返却期限・カレンダー） | ツール：在庫照会・貸出・返却 |
 | **NeoShowcase** | 内製 PaaS（500+ アプリ、自動ビルド/デプロイ） | ツール：デプロイ・状態照会 |
 | **traPortfolio** | 部員の活動ポートフォリオ | ツール：活動・実績の参照（主に read_only） |
-| **rucQ** | 合宿管理 | 複合ワークフローのハブ（後述 B-1） |
+| **rucQ** | **合宿運営システム**（登録・締切つき事前質問・集金・部屋割り・点呼・しおり・スケジュールを内製） | ほぼ自己完結。本システムは外側の催促・承認・対 Jomon 連携を担う（B-1） |
 | **trap-collection** | 内製ゲームの管理・配布 | ツール：作品登録・公開 |
 
 ---
@@ -37,6 +42,11 @@
 
 各サービスを [04](./04-tool-integration.md) のツール（副作用クラス付き）として捉え、
 そこに載るタスク・承認・定期パターンを洗い出す。
+
+> ⚠️ **確度について**：rucQ（[A-5](#a-5-rucq合宿運営)）は `openapi.yaml` ＋ `model/*.go` を
+> 実際に読んで記述しており確度が高い。一方、他サービス（knoQ・booQ・anke-to・NeoShowcase 等）の
+> 機能記述は紹介記事・README 等の軽い情報に基づく**暫定**で、rucQ で起きたような取り違えの
+> 可能性がある。MVP 前に各サービスの OpenAPI を rucQ 同様に精読して確定する（[10 U2](./10-open-questions.md)）。
 
 ## A-1. knoQ（部屋・イベント予約）
 
@@ -87,10 +97,54 @@
 - **承認**：本番影響のある操作は確認＋承認を必須（[07](./07-human-in-the-loop.md)）。
 - **監視連動**：障害検知をシグナルに、エージェントが一次対応タスクを起票（後述 C）。
 
-## A-5. rucQ（合宿管理）
+## A-5. rucQ（合宿運営）
 
-単一の「合宿を運営したい」が、参加者集約・日程・部屋割り・集金・連絡を内包する。
-**複合ワークフローの代表**として Part B-1 で詳述。
+> ⚠️ **訂正メモ**：本ドキュメント初版では rucQ を「anke-to で日程調整 → knoQ で部屋予約 →
+> Jomon で集金…を束ねるハブ」と書いたが、**誤り**。実物（`openapi.yaml` ＋ `model/*.go`）を
+> 確認すると、rucQ は合宿運営の大半を**自前で内包する完成度の高い専用システム**だった。
+> 以下は実機能に基づく正確な記述。
+
+### rucQ が自前で持つドメイン（実機能）
+
+| 概念 | 内容 |
+|------|------|
+| **Camp** | 合宿本体。`name`・`guidebook`(Markdown のしおり)・開催期間・**ドラフト/登録受付中/支払い受付中フラグ**（＝ライフサイクル） |
+| **Registration / Participant** | 参加登録・キャンセル、参加者一覧、スタッフ(`isStaff`)判定 |
+| **QuestionGroup / Question / Option / Answer** | **締切(`due`)つきの事前質問**。型は free_text / free_number / single / multiple。`isPublic`/`isOpen`/`isRequired`。回答は本人提出＋管理者代理入力も可 |
+| **Payment** | 参加者ごとの `amount`(請求額) と `amountPaid`(入金額)＝**集金の進捗管理** |
+| **RoomGroup / Room / RoomStatus** | **部屋割り**。部屋の在室ステータスと履歴(status-logs) |
+| **Event** | 合宿中のスケジュール。`duration`(時間幅) / `official`(公式) / `moment`(時点) の3型、場所・主催者付き |
+| **RollCall / Reaction** | **点呼**。`subjects`(対象)・`options`(選択肢)を持ち、参加者が reaction で応答。**リアルタイムstream**あり |
+| **Activity** | 部屋作成・支払い変更・点呼・質問公開などの活動フィード |
+| その他 | 画像(しおり用)、管理者からの traQ DM 送信 |
+
+### つまり：rucQ は「合宿版の本システム」に近い
+
+rucQ は既に「ライフサイクルを持つ案件（Camp）＋締切つき入力収集（Question）＋集金（Payment）＋
+割り当て（Room）＋点呼（RollCall）」を備える。本システムの抽象（タスク・状態・期限・集約）と
+**構造が酷似**しており、rucQ を作り直す価値は薄い。
+
+### では本システム（エージェント層）が rucQ に足せる価値は何か
+
+rucQ が**データと操作**を持つのに対し、本システムは**能動的な進行と連鎖**を足す：
+
+1. **締切の能動的な催促**（[06](./06-recurring-tasks.md), [12 C-1](#c-1-期限締切リマインドの横断)）：
+   Question の `due` 前に未回答者へ traQ 通知、Payment の `amountPaid < amount` の未払い者へ催促。
+   rucQ は締切と入金状況を**持つ**が、追いかけは人手。ここをエージェントが担う。
+2. **点呼の異常検知**：RollCall の `subjects` と reaction を突き合わせ、未応答者を traQ で呼び出す。
+3. **対 Jomon 連携**（B-1）：rucQ の Payment は**参加者からの集金（収入側）**。一方、合宿の
+   会場費・交通費・食事業者への支払い（**支出側**）は Jomon を通る。両者を一つの「合宿の収支」
+   タスクとして連結するのは rucQ 単体ではできない＝本システムの出番。
+4. **ライフサイクルの自動遷移**：ドラフト→登録受付→支払い受付→締め、の節目に承認/通知を挟む。
+
+ツール化の例：
+
+| ツール例 | 副作用クラス |
+|---------|-------------|
+| `rucq.camp.get` / `rucq.participants.list` / `rucq.payments.list` | read_only |
+| `rucq.answers.get`（未回答者の割り出し） | read_only |
+| `rucq.user.message`（管理者 DM 送信） | irreversible_or_monetary（対人通知） |
+| `rucq.payment.update`（入金記録の更新） | reversible_write |
 
 ## A-6. trap-collection（ゲーム管理・配布）
 
@@ -119,25 +173,36 @@
 既存サービスは個々に完結している。**サービスをまたぐエンドツーエンドの仕事**を、一つの
 タスクの連鎖として束ねるのが、このオーケストレーション層の最大の価値。
 
-## B-1. 合宿運営フロー（rucQ × anke-to × knoQ × Jomon × booQ × traQ）
+## B-1. 合宿の「収支」連結（rucQ ⇄ Jomon、traQ で催促）
+
+> 訂正後の正しい連携像。rucQ は合宿運営をほぼ自己完結する（[A-5](#a-5-rucq合宿運営)）ため、
+> 「複数サービスで合宿を組み立てる」のではなく、**rucQ が持たない外側＝対外的な収支と催促**を
+> 本システムが担う、という細い連携になる。
+
+rucQ の `Payment` は**参加者からの集金（収入）**を追うが、合宿の**支出**（会場費・交通・食事業者
+への支払い、立替の精算）は会計システム **Jomon** を通る。両者は別システムで、**合宿1件の収支を
+通しで見る手段が現状ない**。ここが本システムの価値。
 
 ```mermaid
 graph TD
-    Start[タスク: 夏合宿を運営したい] --> Poll[anke-to: 日程・参加意向アンケート]
-    Poll --> Decide[集計→日程確定]
-    Decide --> Venue[knoQ/外部: 施設・部屋予約]
-    Decide --> Roster[rucQ: 参加者・部屋割り確定]
-    Roster --> Collect[Jomon: 参加費の集金/事前申請]
-    Venue --> Gear[booQ: 持参機材の手配]
-    Collect --> Settle[合宿後: Jomon で精算（区間処理）]
-    Gear --> Return[合宿後: booQ 返却リマインド]
-    Roster --> Notify[traQ: 参加者へ連絡・しおり配布]
+    Camp[rucQ: 合宿 Camp] -->|収入側| Income[rucQ Payment: 参加者の請求/入金]
+    Camp -->|支出側| Outflow[Jomon: 会場/交通/食事の事前申請・精算]
+    Income --> Ledger[本システム: 合宿の収支タスク]
+    Outflow --> Ledger
+    Ledger --> Chase1[traQ: 未払い参加者へ催促]
+    Ledger --> Chase2[traQ: 未回答者へ締切前リマインド]
+    Ledger --> Approve[Jomon: 支出の承認・精算]
+    Ledger --> Close[締め: 収支の突合・報告]
 ```
 
-- 一つの「合宿を運営したい」タスクが、サブタスク／サブワークフロー（[03 §6](./03-workflow-engine.md)）に
-  分岐し、複数サービスを横断。
-- 集金→精算は Jomon への**ファンアウト→ファンイン**（[08 §2](./08-reference-workflows.md) と同型）。
-- 各ステップの承認・確認は [07](./07-human-in-the-loop.md) に従う。
+- 「合宿の収支」を一つのタスクとして、rucQ（収入）と Jomon（支出）を**リンク**で束ねる
+  （`external_ref`、[Part D](#part-d-連携を支える設計上の含意)）。rucQ も Jomon も改変しない。
+- 催促（未払い・未回答）は rucQ の状態を読み、traQ 通知で能動的に行う（[06 C-1](#c-1-期限締切リマインドの横断)）。
+- 支出側の承認・精算は [08](./08-reference-workflows.md) の経費フローをそのまま使う。
+
+> 教訓：**既存サービスが厚いところは「束ねる」のではなく「外側の連鎖と催促」を足す**。
+> 薄いところ（サービス間にまたがる収支・期限・承認）こそ本システムの主戦場。
+> ([12 全体の前提を A-5 の訂正に合わせて見直したもの。])
 
 ## B-2. イベント運営の連鎖（anke-to → knoQ → traQ → Jomon）
 
