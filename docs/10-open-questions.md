@@ -50,6 +50,14 @@
 | N3 | **エージェントの実装形態** | traQ BOT か、OAuth2 クライアントか、両方か | [11 §3](./11-trap-ecosystem.md) |
 | N4 | **既存レコードとの同一性** | 本システムの「タスク」と Jomon/knoQ の既存レコードのリンク・重複回避 | [11 §9](./11-trap-ecosystem.md) |
 
+## Jomon 実機能の検証で加わった論点（[12 §A-0](./12-cross-service-usecases.md) より）
+
+| # | 論点 | 背景・選択肢 | 出所 |
+|---|------|------------|------|
+| J1 | **二段階 vs 単段階** | ユーザー構想は「事前申請→後日精算」の二段階。現状 Jomon は単一 Application のライフサイクル。(a) 2 申請をリンク / (b) 1 申請に寄せる / (c) Jomon を拡張 | [08 §1](./08-reference-workflows.md), [12 §A-0](./12-cross-service-usecases.md) |
+| J2 | **部費の範囲確定** | Jomon は部費専用。どの業務が「部費」で Jomon に載り、どれが部費外（合宿=rucQ 等）かの線引き | [11 §5](./11-trap-ecosystem.md), [12 §A-0/B-1](./12-cross-service-usecases.md) |
+| J3 | **承認の主体** | Jomon の承認は `account_manager`(会計担当)。本システムの承認ゲート([07])と Jomon の status 遷移をどう一致させるか | [12 §A-0](./12-cross-service-usecases.md) |
+
 ## サービス横断ユースケース探索で加わった論点（[12](./12-cross-service-usecases.md) より）
 
 | # | 論点 | 背景・選択肢 | 出所 |

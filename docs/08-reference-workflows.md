@@ -12,6 +12,15 @@
 
 ## 1. 交通費の精算（主たる例）
 
+> ⚠️ **現実の Jomon との対応（重要）**：以下は**抽象モデル**。実際の経費は traP の **Jomon**
+> （部費＝部の公式予算専用）に載る。Jomon は単一 Application を
+> `pending_review→approved→payment_finished` と進める**単段階**で、本例の「事前申請」と「精算」が
+> 別エンティティに分かれているわけではない（[12 §A-0](./12-cross-service-usecases.md) を精読）。
+> よって `pre_application.submit` / `payment.execute` は、Jomon 上では
+> **(a) 2 つの Application をリンク** するか **(b) 1 Application のライフサイクル** に寄せるか、の
+> 設計判断（[10](./10-open-questions.md) J1）になる。また**部費外のお金（合宿参加費等）は Jomon の
+> 対象外**で、この例は「部費で賄う交通費」に限る。
+
 ### 1.1 登場物
 
 | 種類 | 値 |

@@ -87,15 +87,23 @@ traP 文化では**スタンプによる軽量な合意形成**が日常的で�
 > 注：スタンプは軽量で便利だが、金銭を伴う不可逆操作の最終承認には、誤操作防止のため
 > 明示的な確認ステップを併用するか検討（[10](./10-open-questions.md) に追記）。
 
-## 5. Jomon = 既存の会計フロー（[08] の現実版）
+## 5. Jomon = 既存の**部費**会計フロー（[08] の現実版）
 
-**Jomon は traP の会計支援システム**であり、本ドキュメントの経費精算例（[08](./08-reference-workflows.md)）は
-**既に存在する業務**である。
+**Jomon は traP の「部費（部の公式予算）」専用の会計システム**であり、本ドキュメントの
+経費精算例（[08](./08-reference-workflows.md)）は **既に存在する業務**である。
+逆に言うと、**部費外のお金（例：合宿の参加費）は Jomon の対象外**で、そちらは rucQ など別系統が扱う
+（[12 §A-0/B-1](./12-cross-service-usecases.md)）。
 
-- Go ＋ MariaDB、REST API（Jomon v2 API）、UI 分離（Jomon-UI）。
-- **traQ で認証**し、**traQ へ通知**する（既に §3・§4 の構図に乗っている）。
-- 概念：申請（request）／承認／取引（transaction）／タグ／グループ／コメント／
-  ファイル（領収書）／オブジェクトストレージ（Swift）。
+- Go ＋ MariaDB、REST API（Jomon v2 API、`docs/swagger.yaml` を精読）、UI 分離（Jomon-UI）。
+- **traQ で認証（OAuth PKCE）**し、**traQ へ通知**する（§3・§4 の構図に乗っている）。
+- 実ドメイン（検証済み）：
+  - **Application（申請）**：`title`/`content`/`targets[]`(振込先＋金額)/`tags[]`/`partition`(予算区分)。
+  - **Status**：`pending_review → change_requested → approved → payment_finished`（or `rejected`）。
+  - **ApplicationTarget（振込対象）**：`amount`/`target`/`paid_at`（支払い完了で payment_finished）。
+  - **Partition/PartitionGroup**：`budget` を持つ階層的**予算区分**。
+  - **AccountManager（会計担当）**、Comment、Tag、File（領収書）。
+- ⚠️ **重要差分**：現状の Jomon は**単一 Application のライフサイクル**で、ユーザー構想の
+  「事前申請 → 後日 精算」という**二段階とは構造が異なる**（[12 §A-0](./12-cross-service-usecases.md) J1）。
 
 ### 設計上の重要な分岐点
 
