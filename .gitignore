@@ -1,0 +1,16 @@
+# Backend
+/data/
+*.db
+*.db-shm
+*.db-wal
+/server
+/bin/
+
+# Frontend
+/frontend/node_modules/
+/frontend/dist/
+npm-debug.log*
+
+# Misc
+.DS_Store
+*.log
