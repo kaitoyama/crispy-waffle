@@ -87,14 +87,18 @@ func (s *Service) GetTaskDetail(ctx context.Context, taskID domain.TaskID) (Task
 		if err != nil {
 			return TaskDetail{}, err
 		}
-		d.Events = events
+		if events != nil {
+			d.Events = events
+		}
 	}
 
 	links, err := s.Store.ListLinksForTask(ctx, taskID)
 	if err != nil {
 		return TaskDetail{}, err
 	}
-	d.Links = links
+	if links != nil {
+		d.Links = links
+	}
 
 	// Graph nodes: this task plus every linked task.
 	seen := map[domain.TaskID]bool{taskID: true}
