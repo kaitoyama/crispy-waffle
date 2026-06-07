@@ -209,6 +209,14 @@ export function FlowBuilderPage() {
                         <option key={t.key} value={t.key}>{t.key}（{t.side_effect_class}）</option>
                       ))}
                     </select>
+                    {(() => {
+                      const t = tools.data?.find((x) => x.key === s.tool_key);
+                      return t?.outputs?.length ? (
+                        <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                          出力: {t.outputs.map((o) => o.name).join(", ")}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
                 <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 20 }}>

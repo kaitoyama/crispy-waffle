@@ -87,6 +87,44 @@ DB は `./data/app.db` に作られる。作り直すには `make reset-db`。
 make test   # Fold 再現性 / ガード評価 / 精算フロー（成功・却下・確認ループ・冪等）
 ```
 
+## ツールの追加（コードで増やす）
+
+ツールは「ステップが叩ける能力」で、**コードで1ファイル書いて1行登録**すれば増えます。
+データ駆動の UI ビルダーは持たず、汎用の `Tool` インターフェースに集約しています。
+登録した Spec が、カタログ API・フロービルダーのツール選択・認可・実行のすべての源になります。
+
+1. `internal/tools/builtin/` に `tools.Tool` を実装した型を作る:
+
+```go
+type ReceiptCheck struct{}
+
+func (ReceiptCheck) Spec() tools.Spec {
+    return tools.Spec{
+        Key: "receipt.check", DisplayName: "領収書チェック",
+        SideEffectClass: tools.ReadOnly,
+        Inputs:  []tools.Field{{Name: "receipt_attached", Type: "boolean"}},
+        Outputs: []tools.Field{{Name: "receipt_ok", Type: "boolean"}},
+    }
+}
+
+func (ReceiptCheck) Execute(ctx context.Context, in tools.Input) (map[string]any, error) {
+    ok, _ := in.Context["receipt_attached"].(bool)
+    return map[string]any{"receipt_ok": ok}, nil
+}
+```
+
+2. `internal/tools/builtin/builtin.go` の `Register` に1行追加: `r.Register(ReceiptCheck{})`
+
+これだけで、`GET /api/tools` に出てフロービルダーで束縛でき、実行されます。実体（HTTP 呼び出し・
+traQ 通知・DB 参照など）は `Execute` の中に書きます。`SideEffectClass` は認可と、フロー設計時の
+注意喚起（不可逆ツールは確認/承認ゲートの後ろに置く）に使われます。`amount` のようなスコープ次元は
+`ScopeDimensions` で宣言すると、認可ゲートがアクターのケイパビリティ上限（例: `amount_cap`）で
+束縛します。組み込み例として `fare.lookup` / `pre_application.submit` / `payment.execute` /
+`notify.send` を同梱しています。
+
+> 既定エージェント `acc-bot` には起動時に全登録ツールのケイパビリティが自動付与されるため、
+> コードで足したツールはそのまま使えます。
+
 ## 設計ドキュメント
 
 概念の詳細は [`docs/`](./docs)（ビジョン / ドメインモデル / 実行モデル / HITL / リファレンス

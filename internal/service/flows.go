@@ -133,9 +133,9 @@ func (s *Service) buildDefinition(ctx context.Context, req RegisterFlowRequest) 
 		// Automatic, non-terminal steps run exactly one bound tool.
 		needsTool := (kind == workflow.KindAgentAction || kind == workflow.KindSystemAction) && !in.Terminal
 		if tk := strings.TrimSpace(in.ToolKey); tk != "" {
-			if s.Catalog != nil {
-				if _, ok := s.Catalog.Get(tk); !ok {
-					return workflow.WorkflowDefinition{}, fmt.Errorf("ツール %q はカタログに存在しません", tk)
+			if s.Tools != nil {
+				if _, ok := s.Tools.Get(tk); !ok {
+					return workflow.WorkflowDefinition{}, fmt.Errorf("ツール %q は登録されていません", tk)
 				}
 			}
 			st.ToolBindings = []workflow.ToolBinding{{ToolKey: tk, Scope: in.ToolScope}}

@@ -16,6 +16,7 @@ import (
 	"github.com/kaitoyama/crispy-waffle/internal/service"
 	"github.com/kaitoyama/crispy-waffle/internal/store"
 	"github.com/kaitoyama/crispy-waffle/internal/tools"
+	"github.com/kaitoyama/crispy-waffle/internal/tools/builtin"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
@@ -30,21 +31,24 @@ func main() {
 	defer st.Close()
 	log.Printf("store: migrated %s", dbPath)
 
+	toolRegistry := tools.NewRegistry()
+	builtin.Register(toolRegistry)
+
 	registry := workflow.NewRegistry()
 	engine := &workflow.Engine{
 		Events: st, Runs: st, Tasks: st, Actors: st,
-		Registry: registry, Executor: exec.NewExecutor(),
+		Registry: registry, Executor: exec.NewExecutor(toolRegistry),
 	}
-	catalog := tools.DefaultCatalog()
+
 	svc := service.New(st, engine, registry, seed.ActorAccBot)
-	svc.Catalog = catalog
+	svc.Tools = toolRegistry
 
 	ctx := context.Background()
 	if err := seed.Install(ctx, st, registry, svc); err != nil {
 		log.Fatalf("seed: %v", err)
 	}
 
-	srv := &api.Server{Svc: svc, Catalog: catalog, Registry: registry}
+	srv := &api.Server{Svc: svc, Tools: toolRegistry, Registry: registry}
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", srv.Handler())

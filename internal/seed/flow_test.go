@@ -10,6 +10,8 @@ import (
 	"github.com/kaitoyama/crispy-waffle/internal/domain"
 	"github.com/kaitoyama/crispy-waffle/internal/exec"
 	"github.com/kaitoyama/crispy-waffle/internal/seed"
+	"github.com/kaitoyama/crispy-waffle/internal/tools"
+	"github.com/kaitoyama/crispy-waffle/internal/tools/builtin"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
@@ -84,9 +86,11 @@ func (m *memStore) ResolveActor(_ context.Context, id domain.ActorID) (domain.Ac
 func newEngine(m *memStore) *workflow.Engine {
 	reg := workflow.NewRegistry()
 	reg.Register(seed.ExpenseTransportDefinition())
+	tr := tools.NewRegistry()
+	builtin.Register(tr)
 	return &workflow.Engine{
 		Events: m, Runs: m, Tasks: m, Actors: m,
-		Registry: reg, Executor: exec.NewExecutor(),
+		Registry: reg, Executor: exec.NewExecutor(tr),
 	}
 }
 

@@ -6,6 +6,7 @@ import { ApprovalsInboxPage } from "./pages/ApprovalsInboxPage";
 import { NewTaskPage } from "./pages/NewTaskPage";
 import { FlowsPage } from "./pages/FlowsPage";
 import { FlowBuilderPage } from "./pages/FlowBuilderPage";
+import { ToolsPage } from "./pages/ToolsPage";
 import { useApprovals } from "./hooks/queries";
 
 function NavBar() {
@@ -30,6 +31,9 @@ function NavBar() {
         <Link className={is("/flows") ? "active" : ""} to="/flows">
           フロー
         </Link>
+        <Link className={is("/tools") ? "active" : ""} to="/tools">
+          ツール
+        </Link>
         <Link className={is("/new") ? "active" : ""} to="/new">
           ＋ 新規タスク
         </Link>
@@ -51,6 +55,7 @@ export default function App() {
           <Route path="/approvals" element={<ApprovalsInboxPage />} />
           <Route path="/flows" element={<FlowsPage />} />
           <Route path="/flows/new" element={<FlowBuilderPage />} />
+          <Route path="/tools" element={<ToolsPage />} />
         </Routes>
       </main>
     </div>

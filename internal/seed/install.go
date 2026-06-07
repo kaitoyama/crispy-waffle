@@ -4,10 +4,28 @@ import (
 	"context"
 	"log"
 
+	"github.com/kaitoyama/crispy-waffle/internal/domain"
 	"github.com/kaitoyama/crispy-waffle/internal/service"
 	"github.com/kaitoyama/crispy-waffle/internal/store"
+	"github.com/kaitoyama/crispy-waffle/internal/tools"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
+
+// grantAllTools returns existing capabilities plus an unscoped capability for
+// every registered tool the actor doesn't already hold explicitly.
+func grantAllTools(existing []domain.Capability, specs []tools.Spec) []domain.Capability {
+	have := map[string]bool{}
+	for _, c := range existing {
+		have[c.ToolKey] = true
+	}
+	out := append([]domain.Capability(nil), existing...)
+	for _, s := range specs {
+		if !have[s.Key] {
+			out = append(out, domain.Capability{ToolKey: s.Key})
+		}
+	}
+	return out
+}
 
 const seededMarker = "seeded.v1"
 
@@ -32,6 +50,13 @@ func Install(ctx context.Context, st *store.Store, reg *workflow.Registry, svc *
 	}
 
 	for _, a := range Actors() {
+		// The default agent (acc-bot) is granted a capability for every
+		// registered tool so a tool added in code is immediately usable, while
+		// keeping any explicitly-scoped capabilities (e.g. payment cap). Other
+		// actors keep their seeded capabilities.
+		if a.ID == ActorAccBot && svc.Tools != nil {
+			a.Capabilities = grantAllTools(a.Capabilities, svc.Tools.Specs())
+		}
 		if err := st.UpsertActor(ctx, a); err != nil {
 			return err
 		}

@@ -19,8 +19,8 @@ type Service struct {
 	Store    *store.Store
 	Engine   *workflow.Engine
 	Registry *workflow.Registry
-	// Catalog bounds which tools a UI-registered flow may bind (optional).
-	Catalog *tools.Catalog
+	// Tools bounds which tools a UI-registered flow may bind.
+	Tools *tools.Registry
 	// DefaultAssignee executes agent/system steps when a request omits one.
 	DefaultAssignee domain.ActorID
 }

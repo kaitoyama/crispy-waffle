@@ -18,11 +18,14 @@ export type Actor = {
   capabilities: { tool_key: string; scope?: Record<string, unknown> }[];
 };
 
+export type ToolField = { name: string; type: string; required?: boolean; description?: string };
 export type Tool = {
   key: string;
   display_name: string;
   side_effect_class: string;
   description: string;
+  inputs?: ToolField[];
+  outputs?: ToolField[];
   scope_dimensions?: string[];
 };
 

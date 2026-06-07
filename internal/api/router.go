@@ -19,7 +19,7 @@ func errNotFound(what string) error { return fmt.Errorf("not found: %s", what) }
 // Server holds dependencies for the handlers.
 type Server struct {
 	Svc      *service.Service
-	Catalog  *tools.Catalog
+	Tools    *tools.Registry
 	Registry *workflow.Registry
 }
 

@@ -1,35 +1,28 @@
-// Package exec implements workflow.StepExecutor. It is the pluggable seam where
-// a step's bound tool is actually run. The built-in executor is deterministic
-// (no API keys, fully offline); a real-LLM executor would implement the same
-// interface. Per the project's framing, an "agent" is not privileged — it is
-// just one executor, and every step is driven uniformly through here.
+// Package exec implements workflow.StepExecutor. It is the seam where a step's
+// bound tool is actually run: load the tool from the registry, check
+// authorization (binding ∩ capability), then execute. Per the project's framing
+// an "agent" is not privileged — it is just one executor, and every agent/system
+// step is driven uniformly through here. Tools are added in code
+// (internal/tools/builtin), not via a data-driven builder.
 package exec
 
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
 
 	"github.com/kaitoyama/crispy-waffle/internal/authz"
+	"github.com/kaitoyama/crispy-waffle/internal/tools"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
-// toolFunc computes a deterministic output from the step context.
-type toolFunc func(in workflow.ExecInput) (map[string]any, error)
-
-// Executor dispatches a step's single bound tool through the authz gate, then
-// runs the deterministic tool implementation.
+// Executor runs a step's single bound tool from the registry.
 type Executor struct {
-	tools map[string]toolFunc
+	registry *tools.Registry
 }
 
-// NewExecutor wires the built-in deterministic tool implementations.
-func NewExecutor() *Executor {
-	e := &Executor{tools: map[string]toolFunc{}}
-	e.tools["fare.lookup"] = fareLookup
-	e.tools["pre_application.submit"] = preApplicationSubmit
-	e.tools["payment.execute"] = paymentExecute
-	return e
+// NewExecutor wires the executor to the tool registry.
+func NewExecutor(registry *tools.Registry) *Executor {
+	return &Executor{registry: registry}
 }
 
 // Execute satisfies workflow.StepExecutor.
@@ -40,28 +33,40 @@ func (e *Executor) Execute(ctx context.Context, in workflow.ExecInput) (workflow
 	// MVP: one tool per agent/system step.
 	toolKey := in.Step.ToolBindings[0].ToolKey
 
-	// Authorization: binding ∩ capability, with amount bound where relevant.
-	dec := authz.Check(in.Step, in.Actor, toolKey, amountArgs(in.Context))
+	tool, ok := e.registry.Get(toolKey)
+	if !ok {
+		return workflow.ExecResult{}, fmt.Errorf("exec: no tool registered for %q", toolKey)
+	}
+	spec := tool.Spec()
+
+	// Authorization: binding ∩ capability, bounding the tool's scope dimensions
+	// (e.g. amount) against the actor's capability caps.
+	dec := authz.Check(in.Step, in.Actor, toolKey, scopeArgs(spec, in.Context))
 	if !dec.Allowed {
 		return workflow.ExecResult{Tool: toolKey, Denied: true, DenyReason: dec.Reason}, nil
 	}
 
-	fn, ok := e.tools[toolKey]
-	if !ok {
-		return workflow.ExecResult{}, fmt.Errorf("exec: no implementation for tool %q", toolKey)
-	}
-	out, err := fn(in)
+	out, err := tool.Execute(ctx, tools.Input{
+		Context: in.Context,
+		Task: tools.TaskMeta{
+			ID: string(in.Task.ID), Type: in.Task.Type, Title: in.Task.Title,
+		},
+		IdempotencyKey: in.IdempotencyKey,
+	})
 	if err != nil {
 		return workflow.ExecResult{}, err
 	}
 	return workflow.ExecResult{Tool: toolKey, CapabilityUsed: dec.CapabilityUsed, Output: out}, nil
 }
 
-// amountArgs pulls numeric args the authz gate compares against scope caps.
-func amountArgs(ctx map[string]any) map[string]float64 {
+// scopeArgs reads the numeric context values named by the tool's scope
+// dimensions so the authz gate can bound them against capability caps.
+func scopeArgs(spec tools.Spec, c map[string]any) map[string]float64 {
 	args := map[string]float64{}
-	if v, ok := toFloat(ctx["amount"]); ok {
-		args["amount"] = v
+	for _, dim := range spec.ScopeDimensions {
+		if v, ok := toFloat(c[dim]); ok {
+			args[dim] = v
+		}
 	}
 	return args
 }
@@ -76,18 +81,4 @@ func toFloat(v any) (float64, bool) {
 		return float64(n), true
 	}
 	return 0, false
-}
-
-func ctxString(ctx map[string]any, key string) string {
-	if s, ok := ctx[key].(string); ok {
-		return s
-	}
-	return ""
-}
-
-// shortHash returns a stable short token derived from s (for deterministic ids).
-func shortHash(s string) string {
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(s))
-	return fmt.Sprintf("%08x", h.Sum32())
 }

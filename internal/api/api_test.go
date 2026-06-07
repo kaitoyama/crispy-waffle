@@ -15,6 +15,7 @@ import (
 	"github.com/kaitoyama/crispy-waffle/internal/service"
 	"github.com/kaitoyama/crispy-waffle/internal/store"
 	"github.com/kaitoyama/crispy-waffle/internal/tools"
+	"github.com/kaitoyama/crispy-waffle/internal/tools/builtin"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
@@ -26,12 +27,15 @@ func newServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { st.Close() })
 	reg := workflow.NewRegistry()
-	eng := &workflow.Engine{Events: st, Runs: st, Tasks: st, Actors: st, Registry: reg, Executor: exec.NewExecutor()}
+	tr := tools.NewRegistry()
+	builtin.Register(tr)
+	eng := &workflow.Engine{Events: st, Runs: st, Tasks: st, Actors: st, Registry: reg, Executor: exec.NewExecutor(tr)}
 	svc := service.New(st, eng, reg, seed.ActorAccBot)
+	svc.Tools = tr
 	if err := seed.Install(context.Background(), st, reg, svc); err != nil {
 		t.Fatal(err)
 	}
-	srv := &api.Server{Svc: svc, Catalog: tools.DefaultCatalog(), Registry: reg}
+	srv := &api.Server{Svc: svc, Tools: tr, Registry: reg}
 	mux := http.NewServeMux()
 	mux.Handle("/api/", srv.Handler())
 	return httptest.NewServer(mux)
@@ -102,6 +106,69 @@ func TestAPI_RegisterFlowAndRun(t *testing.T) {
 	}
 	if got := d["run"].(map[string]any)["status"]; got != "completed" {
 		t.Fatalf("run status=%v want completed", got)
+	}
+}
+
+func TestAPI_CodeToolFlowsEndToEnd(t *testing.T) {
+	ts := newServer(t)
+	defer ts.Close()
+
+	// The code-registered notify.send tool appears in the catalog automatically.
+	var tools []map[string]any
+	{
+		resp, _ := http.Get(ts.URL + "/api/tools")
+		_ = json.NewDecoder(resp.Body).Decode(&tools)
+		resp.Body.Close()
+	}
+	found := false
+	for _, tl := range tools {
+		if tl["key"] == "notify.send" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("notify.send not in catalog: %v", tools)
+	}
+
+	// Build a flow that binds the code tool on an automatic step.
+	do(t, ts, "POST", "/api/workflow-definitions", "tanaka", map[string]any{
+		"key":            "notice.simple",
+		"display_name":   "通知フロー",
+		"entry_step":     "notify",
+		"context_fields": []map[string]any{{"name": "message", "type": "string"}},
+		"steps": []map[string]any{
+			{"key": "notify", "title": "通知を送る", "kind": "agent_action", "enters_state": "Notifying",
+				"tool_key": "notify.send", "transitions": []map[string]any{{"to": "done", "guard": ""}}},
+			{"key": "done", "title": "完了", "kind": "system_action", "enters_state": "Done", "terminal": true},
+		},
+	})
+
+	// Creating a task runs the automatic step (acc-bot is auto-granted the tool)
+	// straight through to completion.
+	created := do(t, ts, "POST", "/api/tasks", "tanaka", map[string]any{
+		"type":    "notice.simple",
+		"title":   "お知らせ",
+		"context": map[string]any{"message": "こんにちは"},
+	})
+	task := created["task"].(map[string]any)
+	if task["status"] != "Done" {
+		t.Fatalf("status=%v want Done", task["status"])
+	}
+	if created["run"].(map[string]any)["status"] != "completed" {
+		t.Fatalf("run=%v want completed", created["run"])
+	}
+	// The tool invocation is on the ledger.
+	invoked := false
+	for _, e := range created["events"].([]any) {
+		ev := e.(map[string]any)
+		if ev["type"] == "tool.invoked" {
+			if p, ok := ev["payload"].(map[string]any); ok && p["tool"] == "notify.send" {
+				invoked = true
+			}
+		}
+	}
+	if !invoked {
+		t.Fatalf("notify.send not recorded in ledger")
 	}
 }
 

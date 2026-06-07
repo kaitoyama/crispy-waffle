@@ -122,7 +122,7 @@ func (s *Server) submitDecision(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listTools(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, s.Catalog.All())
+	writeJSON(w, http.StatusOK, s.Tools.Specs())
 }
 
 func (s *Server) listActors(w http.ResponseWriter, r *http.Request) {
