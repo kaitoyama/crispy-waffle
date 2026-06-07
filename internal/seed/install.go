@@ -11,11 +11,25 @@ import (
 
 const seededMarker = "seeded.v1"
 
-// Install registers the reference workflow in the registry, upserts the actors
-// and task type (idempotent), and—on first run only—creates a demo task so the
+// Install ensures the reference workflow exists in the DB, loads ALL persisted
+// definitions (seed + UI-registered) into the registry, upserts the actors and
+// task type (idempotent), and—on first run only—creates a demo task so the
 // dashboard isn't empty. Safe to call on every startup.
 func Install(ctx context.Context, st *store.Store, reg *workflow.Registry, svc *service.Service) error {
-	reg.Register(ExpenseTransportDefinition())
+	// Persist the reference flow once, then hydrate the registry from the DB so
+	// flows registered through the UI are restored across restarts.
+	if _, err := st.GetDefinition(ctx, "expense.transport", 1); err != nil {
+		if err := st.UpsertDefinition(ctx, ExpenseTransportDefinition()); err != nil {
+			return err
+		}
+	}
+	defs, err := st.ListDefinitions(ctx)
+	if err != nil {
+		return err
+	}
+	for _, d := range defs {
+		reg.Register(d)
+	}
 
 	for _, a := range Actors() {
 		if err := st.UpsertActor(ctx, a); err != nil {
@@ -34,7 +48,7 @@ func Install(ctx context.Context, st *store.Store, reg *workflow.Registry, svc *
 	}
 
 	// First boot: create a demo task driven to its first wait (confirm_pre).
-	_, err := svc.CreateTask(ctx, ActorTanaka, service.CreateTaskRequest{
+	_, err = svc.CreateTask(ctx, ActorTanaka, service.CreateTaskRequest{
 		Type:   "expense.transport",
 		Title:  "6月分 交通費の精算（北千住→御茶ノ水）",
 		Intent: "6月の交通費を精算したい",

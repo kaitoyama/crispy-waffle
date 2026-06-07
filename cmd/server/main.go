@@ -35,14 +35,16 @@ func main() {
 		Events: st, Runs: st, Tasks: st, Actors: st,
 		Registry: registry, Executor: exec.NewExecutor(),
 	}
+	catalog := tools.DefaultCatalog()
 	svc := service.New(st, engine, registry, seed.ActorAccBot)
+	svc.Catalog = catalog
 
 	ctx := context.Background()
 	if err := seed.Install(ctx, st, registry, svc); err != nil {
 		log.Fatalf("seed: %v", err)
 	}
 
-	srv := &api.Server{Svc: svc, Catalog: tools.DefaultCatalog(), Registry: registry}
+	srv := &api.Server{Svc: svc, Catalog: catalog, Registry: registry}
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/", srv.Handler())

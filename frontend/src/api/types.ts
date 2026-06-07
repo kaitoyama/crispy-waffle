@@ -121,6 +121,36 @@ export type TaskDetail = {
   approvals: ApprovalRecord[];
 };
 
+export type TaskType = {
+  key: string;
+  display_name: string;
+  context_schema: Record<string, string>;
+  default_workflow_key: string;
+  default_workflow_ver: number;
+};
+
+// Flow-builder request shapes (mirror service.RegisterFlowRequest).
+export type ContextFieldInput = { name: string; type: string };
+export type TransitionInput = { to: string; guard: string };
+export type StepInput = {
+  key: string;
+  title: string;
+  kind: string;
+  gate_kind: string;
+  enters_state: string;
+  terminal: boolean;
+  tool_key: string;
+  tool_scope?: Record<string, unknown>;
+  transitions: TransitionInput[];
+};
+export type RegisterFlowRequest = {
+  key: string;
+  display_name: string;
+  entry_step: string;
+  context_fields: ContextFieldInput[];
+  steps: StepInput[];
+};
+
 export type ApprovalRequest = {
   task_id: string;
   run_id: string;

@@ -4,6 +4,8 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { TaskDetailPage } from "./pages/TaskDetailPage";
 import { ApprovalsInboxPage } from "./pages/ApprovalsInboxPage";
 import { NewTaskPage } from "./pages/NewTaskPage";
+import { FlowsPage } from "./pages/FlowsPage";
+import { FlowBuilderPage } from "./pages/FlowBuilderPage";
 import { useApprovals } from "./hooks/queries";
 
 function NavBar() {
@@ -25,6 +27,9 @@ function NavBar() {
         <Link className={is("/approvals") ? "active" : ""} to="/approvals">
           承認インボックス{pending > 0 && <span className="badge-count">{pending}</span>}
         </Link>
+        <Link className={is("/flows") ? "active" : ""} to="/flows">
+          フロー
+        </Link>
         <Link className={is("/new") ? "active" : ""} to="/new">
           ＋ 新規タスク
         </Link>
@@ -44,6 +49,8 @@ export default function App() {
           <Route path="/new" element={<NewTaskPage />} />
           <Route path="/tasks/:id" element={<TaskDetailPage />} />
           <Route path="/approvals" element={<ApprovalsInboxPage />} />
+          <Route path="/flows" element={<FlowsPage />} />
+          <Route path="/flows/new" element={<FlowBuilderPage />} />
         </Routes>
       </main>
     </div>

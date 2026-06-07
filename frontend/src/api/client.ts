@@ -1,8 +1,10 @@
 import type {
   Actor,
   ApprovalRequest,
+  RegisterFlowRequest,
   TaskDetail,
   TaskSummary,
+  TaskType,
   Tool,
   WorkflowDefinition,
 } from "./types";
@@ -66,4 +68,10 @@ export const api = {
   listActors: () => req<Actor[]>("GET", "/api/actors"),
   getDefinition: (key: string) =>
     req<WorkflowDefinition>("GET", `/api/workflow-definitions/${key}`),
+
+  listTaskTypes: () => req<TaskType[]>("GET", "/api/task-types"),
+  listDefinitions: () =>
+    req<WorkflowDefinition[]>("GET", "/api/workflow-definitions"),
+  registerFlow: (body: RegisterFlowRequest) =>
+    req<WorkflowDefinition>("POST", "/api/workflow-definitions", body),
 };

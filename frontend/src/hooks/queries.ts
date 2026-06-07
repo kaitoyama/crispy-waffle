@@ -13,6 +13,12 @@ export const useApprovals = () =>
 export const useTools = () =>
   useQuery({ queryKey: ["tools"], queryFn: api.listTools });
 
+export const useDefinitions = () =>
+  useQuery({ queryKey: ["definitions"], queryFn: api.listDefinitions });
+
+export const useTaskTypes = () =>
+  useQuery({ queryKey: ["taskTypes"], queryFn: api.listTaskTypes });
+
 export const useActors = () =>
   useQuery({ queryKey: ["actors"], queryFn: api.listActors });
 

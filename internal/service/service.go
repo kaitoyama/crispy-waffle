@@ -10,6 +10,7 @@ import (
 
 	"github.com/kaitoyama/crispy-waffle/internal/domain"
 	"github.com/kaitoyama/crispy-waffle/internal/store"
+	"github.com/kaitoyama/crispy-waffle/internal/tools"
 	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
@@ -18,6 +19,8 @@ type Service struct {
 	Store    *store.Store
 	Engine   *workflow.Engine
 	Registry *workflow.Registry
+	// Catalog bounds which tools a UI-registered flow may bind (optional).
+	Catalog *tools.Catalog
 	// DefaultAssignee executes agent/system steps when a request omits one.
 	DefaultAssignee domain.ActorID
 }

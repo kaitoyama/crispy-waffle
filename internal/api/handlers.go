@@ -6,6 +6,7 @@ import (
 
 	"github.com/kaitoyama/crispy-waffle/internal/domain"
 	"github.com/kaitoyama/crispy-waffle/internal/service"
+	"github.com/kaitoyama/crispy-waffle/internal/workflow"
 )
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -141,4 +142,39 @@ func (s *Server) getDefinition(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, def)
+}
+
+func (s *Server) listDefinitions(w http.ResponseWriter, r *http.Request) {
+	defs, err := s.Svc.ListDefinitions(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	if defs == nil {
+		defs = []workflow.WorkflowDefinition{}
+	}
+	writeJSON(w, http.StatusOK, defs)
+}
+
+func (s *Server) registerFlow(w http.ResponseWriter, r *http.Request) {
+	var req service.RegisterFlowRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	def, err := s.Svc.RegisterFlow(r.Context(), req)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, def)
+}
+
+func (s *Server) listTaskTypes(w http.ResponseWriter, r *http.Request) {
+	tts, err := s.Svc.ListTaskTypes(r.Context())
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, tts)
 }

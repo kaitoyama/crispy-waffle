@@ -62,6 +62,49 @@ func do(t *testing.T, ts *httptest.Server, method, path, actor string, body any)
 	return out
 }
 
+func TestAPI_RegisterFlowAndRun(t *testing.T) {
+	ts := newServer(t)
+	defer ts.Close()
+
+	// Register a tool-free approval flow via the API (as the flow builder does).
+	def := do(t, ts, "POST", "/api/workflow-definitions", "tanaka", map[string]any{
+		"key":            "request.simple",
+		"display_name":   "簡易承認",
+		"entry_step":     "ask",
+		"context_fields": []map[string]any{{"name": "subject", "type": "string"}},
+		"steps": []map[string]any{
+			{"key": "ask", "title": "承認待ち", "kind": "human_gate", "gate_kind": "approval", "enters_state": "Pending",
+				"transitions": []map[string]any{
+					{"to": "done", "guard": `approval_approved("ask")`},
+					{"to": "rejected", "guard": `approval_rejected("ask")`},
+				}},
+			{"key": "done", "title": "承認済み", "kind": "system_action", "enters_state": "Approved", "terminal": true},
+			{"key": "rejected", "title": "却下", "kind": "system_action", "enters_state": "Rejected", "terminal": true},
+		},
+	})
+	if def["key"] != "request.simple" {
+		t.Fatalf("register returned %v", def)
+	}
+
+	// Create a task of the new flow and approve it through to completion.
+	created := do(t, ts, "POST", "/api/tasks", "tanaka", map[string]any{
+		"type":    "request.simple",
+		"title":   "備品購入の承認",
+		"context": map[string]any{"subject": "モニター"},
+	})
+	id := created["task"].(map[string]any)["id"].(string)
+	if got := created["task"].(map[string]any)["status"]; got != "Pending" {
+		t.Fatalf("new flow task status=%v want Pending", got)
+	}
+	d := do(t, ts, "POST", "/api/approvals/"+id+"/decision", "accountant", map[string]any{"decision": "approved"})
+	if got := d["task"].(map[string]any)["status"]; got != "Approved" {
+		t.Fatalf("after approve status=%v want Approved", got)
+	}
+	if got := d["run"].(map[string]any)["status"]; got != "completed" {
+		t.Fatalf("run status=%v want completed", got)
+	}
+}
+
 func TestAPI_FullFlow(t *testing.T) {
 	ts := newServer(t)
 	defer ts.Close()

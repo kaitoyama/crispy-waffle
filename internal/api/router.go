@@ -44,6 +44,9 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/tools", s.listTools)
 	mux.HandleFunc("GET /api/actors", s.listActors)
+	mux.HandleFunc("GET /api/task-types", s.listTaskTypes)
+	mux.HandleFunc("GET /api/workflow-definitions", s.listDefinitions)
+	mux.HandleFunc("POST /api/workflow-definitions", s.registerFlow)
 	mux.HandleFunc("GET /api/workflow-definitions/{key}", s.getDefinition)
 
 	return cors(mux)
